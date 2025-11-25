@@ -12,6 +12,8 @@ from apps.chat.serializers import ChatMessageSerializer, ChatHistorySerializer
 from apps.chat.ai_engine import analyze_emotion
 from apps.chat.crisis_detection import detect_crisis_with_emotion, get_crisis_response
 from apps.chat.ai_response import get_ai_response, format_chat_history
+# from twilio.rest import Client
+from apps.chat.utils import send_crisis_alert
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +153,7 @@ def send_message(request):
         
         # TODO: Send alert to admin/support team (implement later)
         # send_crisis_alert(user, chat_message)
+        send_crisis_alert(user, chat_message)
         
         # Return crisis response immediately
         return Response({
@@ -328,4 +331,134 @@ def delete_chat_history(request):
     return Response({
         'message': f'Successfully deleted {count} messages',
         'deleted_count': count
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_mood_analytics(request):
+    """
+    Get user's mood analytics for dashboard
+    
+    Returns:
+    - Emotion timeline (past 7 days)
+    - Emotion breakdown (percentages)
+    - Average sentiment score
+    - Recent mood entries
+    """
+    from datetime import datetime, timedelta
+    from collections import Counter, defaultdict
+    from django.db.models import Avg, Count
+    from django.utils import timezone
+    
+    user = request.user
+    
+    # Get messages from past 7 days
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    messages = ChatMessage.objects.filter(
+        user=user,
+        created_at__gte=seven_days_ago
+    ).order_by('created_at')
+    
+    # If no messages, return empty analytics
+    if not messages.exists():
+        return Response({
+            'emotion_timeline': [],
+            'emotion_breakdown': [],
+            'average_sentiment': 0.0,
+            'recent_moods': [],
+            'total_messages': 0,
+            'date_range': {
+                'start': seven_days_ago.isoformat(),
+                'end': timezone.now().isoformat()
+            }
+        }, status=status.HTTP_200_OK)
+    
+    # ============================================
+    # 1. EMOTION TIMELINE (Group by date)
+    # ============================================
+    timeline_data = defaultdict(lambda: {'emotions': [], 'sentiments': []})
+    
+    for msg in messages:
+        date_key = msg.created_at.date().isoformat()
+        if msg.primary_emotion:
+            timeline_data[date_key]['emotions'].append(msg.primary_emotion)
+        if msg.sentiment_score is not None:
+            timeline_data[date_key]['sentiments'].append(msg.sentiment_score)
+    
+    # Format timeline with daily averages
+    emotion_timeline = []
+    for date_str in sorted(timeline_data.keys()):
+        data = timeline_data[date_str]
+        
+        # Get most common emotion for the day
+        if data['emotions']:
+            emotion_counts = Counter(data['emotions'])
+            most_common_emotion = emotion_counts.most_common(1)[0][0]
+        else:
+            most_common_emotion = 'neutral'
+        
+        # Calculate average sentiment for the day
+        avg_sentiment = sum(data['sentiments']) / len(data['sentiments']) if data['sentiments'] else 0.0
+        
+        emotion_timeline.append({
+            'date': date_str,
+            'primary_emotion': most_common_emotion,
+            'average_sentiment': round(avg_sentiment, 2),
+            'message_count': len(data['emotions'])
+        })
+    
+    # ============================================
+    # 2. EMOTION BREAKDOWN (Percentages)
+    # ============================================
+    all_emotions = [msg.primary_emotion for msg in messages if msg.primary_emotion]
+    emotion_counts = Counter(all_emotions)
+    total_emotions = len(all_emotions)
+    
+    emotion_breakdown = []
+    if total_emotions > 0:
+        for emotion, count in emotion_counts.most_common():
+            percentage = (count / total_emotions) * 100
+            emotion_breakdown.append({
+                'emotion': emotion,
+                'count': count,
+                'percentage': round(percentage, 1)
+            })
+    
+    # ============================================
+    # 3. AVERAGE SENTIMENT SCORE
+    # ============================================
+    sentiment_messages = messages.filter(sentiment_score__isnull=False)
+    avg_sentiment_result = sentiment_messages.aggregate(Avg('sentiment_score'))
+    average_sentiment = avg_sentiment_result['sentiment_score__avg'] or 0.0
+    
+    # ============================================
+    # 4. RECENT MOOD ENTRIES (Last 10)
+    # ============================================
+    recent_messages = messages.order_by('-created_at')[:10]
+    recent_moods = []
+    
+    for msg in recent_messages:
+        recent_moods.append({
+            'id': msg.id,
+            'emotion': msg.primary_emotion or 'neutral',
+            'sentiment_score': msg.sentiment_score,
+            'risk_level': msg.risk_level,
+            'message_preview': msg.message[:100] + '...' if len(msg.message) > 100 else msg.message,
+            'created_at': msg.created_at.isoformat()
+        })
+    
+    # ============================================
+    # 5. RETURN COMPLETE ANALYTICS
+    # ============================================
+    return Response({
+        'emotion_timeline': emotion_timeline,
+        'emotion_breakdown': emotion_breakdown,
+        'average_sentiment': round(average_sentiment, 2),
+        'recent_moods': recent_moods,
+        'total_messages': messages.count(),
+        'date_range': {
+            'start': seven_days_ago.isoformat(),
+            'end': timezone.now().isoformat()
+        }
     }, status=status.HTTP_200_OK)

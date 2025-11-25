@@ -13,5 +13,7 @@ urlpatterns = [
         'history/delete/',
         views.delete_chat_history,
         name='delete_chat_history'
-    )
+    ),
+    # Mood analytics endpoint
+    path('analytics/', views.get_mood_analytics, name='mood_analytics'),
 ]

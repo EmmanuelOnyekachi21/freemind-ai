@@ -37,7 +37,7 @@ CRISIS_KEYWORDS = {
             'i wan die', 'make i just die', 'i go kill myself',
             'make i comot for this world', 'i don taya for life',
             'nothing dey for me again', 'i fit just end am',
-            'make i just finish am', 'i go end myself',
+            'make i just finish am', 'i go end myself', 'wan kpai', 'kpai myself',
         ]
     },
     
@@ -382,9 +382,13 @@ def get_crisis_response(risk_level):
     """
     if risk_level == 'CRITICAL':
         return {
-            'response': """I'm very concerned about what you've shared. Your safety is the most important thing right now. Please reach out for immediate help.
+            'response': """I'm truly concerned about what you're sharing with me. Your safety and wellbeing are what matters most right now.
 
-You don't have to face this alone. There are people who care and want to help you through this difficult moment.""",
+You don't have to face this moment alone. Help is available, and people who care want to support you. Please reach out to one of the emergency services below—they're trained to help and are available right now.
+
+If you're in immediate danger, please call emergency services (112 or 767) right away. 
+
+We're also notifying our support team, and someone from our team may reach out to you to check in. You're valued, and we're here for you. 💙""",
             
             'resources': [
                 {
@@ -395,7 +399,7 @@ You don't have to face this alone. There are people who care and want to help yo
                 },
                 {
                     'name': 'Mentally Aware Nigeria (MANI)',
-                    'contact': '+234 809 210 6493',
+                    'contact': '+2348091116264',
                     'available': '24/7',
                     'type': 'crisis_line'
                 },
@@ -418,9 +422,13 @@ You don't have to face this alone. There are people who care and want to help yo
         }
     elif risk_level == 'HIGH':
         return {
-            'response': """I hear that you're going through a really difficult time right now. What you're feeling is important, and I want to help connect you with support.
+            'response': """I hear you, and I can sense that you're going through something really difficult right now. What you're feeling is valid and important.
 
-It's okay to ask for help - that's a sign of strength, not weakness.""",
+The fact that you're reaching out shows strength. You don't have to handle this alone—support is available, and it's okay to ask for help.
+
+If you're feeling overwhelmed, please consider connecting with one of the resources below. They're trained professionals who understand what you're going through and are ready to listen and support you.
+
+Our team may also reach out to check in on you. You matter. 💙""",
             
             'resources': [
                 {
@@ -449,9 +457,11 @@ It's okay to ask for help - that's a sign of strength, not weakness.""",
     
     elif risk_level == 'MEDIUM':
         return {
-            'response': """It sounds like you're dealing with some challenging feelings. I'm here to support you. Let's talk about what's been happening and explore some ways to help you feel better.
+            'response': """It sounds like you're dealing with some challenging feelings right now, and I appreciate you sharing that with me. That takes courage.
 
-You're taking an important step by reaching out.""",
+Let's work through this together. I'm here to listen and support you. Sometimes talking through what's happening can help clarify things and make them feel more manageable.
+
+If you'd like additional support, there are resources available to help. Remember, seeking help is a sign of strength, not weakness. 💙""",
             
             'resources': [
                 {
